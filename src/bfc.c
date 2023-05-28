@@ -1,10 +1,14 @@
 #include "./bfc.h"
 
 void print_usage() {
-    fprintf(stdout,
-            "Usage: bfc %s <filename> or bfc %s <source code>\n",
-            COMMAND_FLAG_FILE,
-            COMMAND_FLAG_CODE);
+    fprintf(
+        stdout,
+        "Usage:\n"
+        "\tbfc %s <filename> or bfc %s <source code>\n"
+        "\tOptionally, include %s <output filename> to specify the output.\n",
+        COMMAND_FLAG_FILE,
+        COMMAND_FLAG_CODE,
+        COMMAND_FLAG_OUTPUT);
 }
 
 void print_error(const char *message) {
@@ -25,49 +29,77 @@ char *open_file(char *path) {
 
     // Create heap string
     char *source = (char *)malloc(length + 1);
-    assert(source != NULL);
-
-    // Write to the string
-    source[length] = 0;
-    fread(source, 1, length, file);
+    if (source) {
+        source[length] = 0;
+        fread(source, 1, length, file);
+    } else {
+        print_error("Could not allocate memory for input.");
+    }
+    fclose(file);
     return source;
 }
 
-char *read_source(int argc, char **argv) {
-    if (argc != 3) {
+input_t read_source(int argc, char **argv) {
+    input_t input;
+    input.source = NULL;
+    input.target = NULL;
+
+    // Check for correct number of arguments
+    if (argc != 3 && argc != 5) {
         print_usage();
-        return NULL;
+        return input;
     }
 
+    // Get input source string
     if (strcmp(argv[1], COMMAND_FLAG_FILE) == 0) {
-        return open_file(argv[2]);
+        input.source = open_file(argv[2]);
     } else if (strcmp(argv[1], COMMAND_FLAG_CODE) == 0) {
         // Move arg string to heap
         unsigned length = strlen(argv[2]);
-        char *source = (char *)malloc(length + 1);
-        assert(source != NULL);
-
-        source[length] = 0;
-        memcpy(source, argv[2], length);
-        return source;
+        input.source = (char *)malloc(length + 1);
+        if (input.source) {
+            input.source[length] = 0;
+            memcpy(input.source, argv[2], length);
+        } else {
+            print_error("Could not allocate memory for input.");
+        }
     } else {
         print_usage();
-        return NULL;
+        return input;
     }
+
+    // Get target file
+    if (argc == 5) {
+        if (strcmp(argv[3], COMMAND_FLAG_OUTPUT) == 0) {
+            input.target = fopen(argv[4], "w");
+            if (input.target == NULL) {
+                input.source = NULL;
+                print_error("Could not open target file.");
+            }
+        } else {
+            print_usage();
+            return input;
+        }
+    }
+    return input;
 }
 
 int main(int argc, char **argv) {
-    char *source = read_source(argc, argv);
-    if (source == NULL) {
+    input_t input = read_source(argc, argv);
+    if (input.source == NULL) {
         return 1;
-    } else if (!validate(source)) {
+    } else if (!validate(input.source)) {
         print_error("Invalid syntax.");
-        return 1;
     } else {
-        string_t assembly = parse(source);
-        printf("%s", assembly.buffer);
+        string_t assembly = parse(input.source);
+        if (input.target != NULL) {
+            fwrite(assembly.buffer, 1, assembly.length, input.target);
+            fclose(input.target);
+        } else {
+            fprintf(stdout, "%s", assembly.buffer);
+        }
         string_destroy(&assembly);
     }
-    free(source);
+    free(input.source);
     return 0;
 }
