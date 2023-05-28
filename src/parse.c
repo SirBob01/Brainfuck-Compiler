@@ -1,5 +1,4 @@
 #include "./parse.h"
-#include "array.h"
 
 void append_code(string_t *dst, const char *lines[], unsigned n) {
     for (unsigned i = 0; i < n; i++) {
@@ -9,6 +8,93 @@ void append_code(string_t *dst, const char *lines[], unsigned n) {
     string_push(dst, '\n');
 }
 
+void write_block_name(string_t *dst, unsigned block_id) {
+    char name[sizeof(unsigned) * 8 + 10];
+    snprintf(name, sizeof(name), "_block%d", block_id);
+    string_concat(dst, name);
+}
+
+void block_create(array_t *blocks) {
+    string_t block = string_create();
+    write_block_name(&block, blocks->size);
+    string_concat(&block, ":\n");
+    array_push(blocks, &block);
+}
+
+void block_enter(array_t *blocks, unsigned block_id) {
+    string_t *block = array_get(blocks, block_id);
+
+    // If current value is zero, jump to next block
+    string_concat(block, asm_cmp);
+    string_push(block, '\n');
+    string_concat(block, "    je ");
+    write_block_name(block, block_id);
+    string_push(block, '\n');
+}
+
+void block_exit(array_t *blocks, unsigned block_id) {
+    string_t *block = array_get(blocks, block_id);
+
+    // If current value is non-zero, jump to start of block
+    string_concat(block, asm_cmp);
+    string_push(block, '\n');
+    string_concat(block, "    jne ");
+    write_block_name(block, block_id);
+    string_push(block, '\n');
+
+    // Otherwise, return to parent block
+    string_concat(block, "    ret\n");
+}
+
+void block_append(array_t *blocks, unsigned block_id, const char *line) {
+    string_t *block = array_get(blocks, block_id);
+
+    // Append code snippet
+    string_concat(block, line);
+    string_concat(block, "\n\n");
+}
+
+array_t generate_blocks(char *source) {
+    array_t blocks = array_create(sizeof(string_t));
+    block_create(&blocks);
+
+    unsigned curr_block = 0;
+    unsigned n = strlen(source);
+    for (unsigned i = 0; i < n; i++) {
+        switch (source[i]) {
+        case TOKEN_PTR_INC:
+            block_append(&blocks, curr_block, asm_ptr_inc);
+            break;
+        case TOKEN_PTR_DEC:
+            block_append(&blocks, curr_block, asm_ptr_dec);
+            break;
+        case TOKEN_VAL_INC:
+            block_append(&blocks, curr_block, asm_val_inc);
+            break;
+        case TOKEN_VAL_DEC:
+            block_append(&blocks, curr_block, asm_val_dec);
+            break;
+        case TOKEN_WRITE:
+            block_append(&blocks, curr_block, asm_write);
+            break;
+        case TOKEN_READ:
+            block_append(&blocks, curr_block, asm_read);
+            break;
+        case TOKEN_BLOCK_OPEN:
+            block_create(&blocks);
+            block_enter(&blocks, ++curr_block);
+            break;
+        case TOKEN_BLOCK_CLOSE:
+            block_exit(&blocks, curr_block--);
+            break;
+        default:
+            break;
+        }
+    }
+    block_append(&blocks, curr_block, "    ret");
+    return blocks;
+}
+
 string_t parse(char *source) {
     string_t assembly = string_create();
     append_code(&assembly,
@@ -16,7 +102,7 @@ string_t parse(char *source) {
                 sizeof(main_header) / sizeof(main_header[0]));
 
     // Process tokens and create blocks
-    array_t blocks = array_create(sizeof(string_t));
+    array_t blocks = generate_blocks(source);
 
     // Write the footer of main subroutine
     append_code(&assembly,
@@ -24,11 +110,11 @@ string_t parse(char *source) {
                 sizeof(main_footer) / sizeof(main_footer[0]));
 
     // Append blocks to end-of-file and cleanup
-    for (unsigned i = 1; i < blocks.size; i++) {
-        string_t block;
-        array_get(&blocks, i, &block);
-        string_concat(&assembly, block.buffer);
-        string_destroy(&block);
+    for (unsigned i = 0; i < blocks.size; i++) {
+        string_t *block = array_get(&blocks, i);
+        string_concat(&assembly, block->buffer);
+        string_push(&assembly, '\n');
+        string_destroy(block);
     }
     array_destroy(&blocks);
 

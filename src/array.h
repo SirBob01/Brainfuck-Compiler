@@ -44,8 +44,8 @@ void array_push(array_t *array, void *src);
  * @brief Get an item from the array
  *
  * @param array
- * @param dst
+ * @param index
  */
-void array_get(array_t *array, unsigned index, void *dst);
+void *array_get(array_t *array, unsigned index);
 
 #endif

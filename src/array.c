@@ -18,8 +18,8 @@ void array_push(array_t *array, void *src) {
     // Resize the buffer if necessary
     if (array->size == array->capacity) {
         array->capacity *= 2;
-        array->buffer =
-            realloc(array->buffer, array->capacity * array->type_size);
+        unsigned buffer_length = array->capacity * array->type_size;
+        array->buffer = realloc(array->buffer, buffer_length);
         assert(array->buffer != NULL);
     }
 
@@ -29,8 +29,8 @@ void array_push(array_t *array, void *src) {
     array->size++;
 }
 
-void array_get(array_t *array, unsigned index, void *dst) {
+void *array_get(array_t *array, unsigned index) {
     assert(index < array->size);
     unsigned offset = index * array->type_size;
-    memcpy(dst, array->buffer + offset, array->type_size);
+    return array->buffer + offset;
 }
