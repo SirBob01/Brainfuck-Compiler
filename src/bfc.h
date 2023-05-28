@@ -1,0 +1,44 @@
+#ifndef BFC_H
+#define BFC_H
+
+#define COMMAND_FLAG_FILE "-i"
+#define COMMAND_FLAG_CODE "-c"
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "./parse.h"
+#include "./string.h"
+
+/**
+ * @brief Print usage information.
+ *
+ */
+void print_usage();
+
+/**
+ * @brief Print error message.
+ *
+ */
+void print_error(const char *message);
+
+/**
+ * @brief Create a heap string from the contents of a file.
+ *
+ * @param path
+ * @return char*
+ */
+char *open_file(char *path);
+
+/**
+ * @brief Parse input commands and get the source code.
+ *
+ * @param argc
+ * @param argv
+ * @return char*
+ */
+char *read_source(int argc, char **argv);
+
+#endif
