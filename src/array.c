@@ -34,3 +34,14 @@ void *array_get(array_t *array, unsigned index) {
     unsigned offset = index * array->type_size;
     return array->buffer + offset;
 }
+
+void array_pop(array_t *array) {
+    assert(array->size > 0);
+    array->size--;
+}
+
+void *array_back(array_t *array) {
+    assert(array->size > 0);
+    unsigned offset = (array->size - 1) * array->type_size;
+    return array->buffer + offset;
+}

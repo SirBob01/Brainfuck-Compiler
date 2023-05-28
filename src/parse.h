@@ -52,7 +52,7 @@ static const char *main_header[] = {
     "    call _malloc",
     "    mov r14, rax",
     "",
-    "    jmp _block0", // Call the first block
+    "    call _block0", // Call the first block
 };
 static const char *main_footer[] = {
     "    mov rdi, r14", // Free the buffer

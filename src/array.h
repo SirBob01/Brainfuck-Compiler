@@ -7,7 +7,7 @@
 #include <string.h>
 
 /**
- * @brief Dynamically sized array
+ * @brief Dynamically sized array.
  *
  */
 typedef struct {
@@ -41,11 +41,26 @@ void array_destroy(array_t *array);
 void array_push(array_t *array, void *src);
 
 /**
- * @brief Get an item from the array
+ * @brief Get an item from the array.
  *
  * @param array
  * @param index
  */
 void *array_get(array_t *array, unsigned index);
+
+/**
+ * @brief Pop an item from the back of the array.
+ *
+ * @param array
+ */
+void array_pop(array_t *array);
+
+/**
+ * @brief Get the last item in the array.
+ *
+ * @param array
+ * @return void*
+ */
+void *array_back(array_t *array);
 
 #endif
