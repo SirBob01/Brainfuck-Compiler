@@ -118,8 +118,9 @@ array_t generate_blocks(char *source) {
         }
     }
 
-    // Close root block
+    // Close root block and destroy stack
     block_append(&blocks, 0, "    ret");
+    array_destroy(&stack);
     return blocks;
 }
 

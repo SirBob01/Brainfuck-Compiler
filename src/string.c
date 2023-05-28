@@ -3,7 +3,7 @@
 string_t string_create() {
     string_t string;
     string.length = 0;
-    string.capacity = 4;
+    string.capacity = 2;
 
     // Allocate the buffer
     string.buffer = malloc(string.capacity);
