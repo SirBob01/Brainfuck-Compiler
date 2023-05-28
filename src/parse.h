@@ -5,14 +5,14 @@
  * @brief Token definitions
  *
  */
-#define TOKEN_PTR_INC '>'
-#define TOKEN_PTR_DEC '<'
-#define TOKEN_VAL_INC '+'
-#define TOKEN_VAL_DEC '-'
-#define TOKEN_WRITE   '.'
-#define TOKEN_READ    ','
-#define TOKEN_JMP_INC '['
-#define TOKEN_JMP_DEC ']'
+#define TOKEN_PTR_INC     '>'
+#define TOKEN_PTR_DEC     '<'
+#define TOKEN_VAL_INC     '+'
+#define TOKEN_VAL_DEC     '-'
+#define TOKEN_WRITE       '.'
+#define TOKEN_READ        ','
+#define TOKEN_BLOCK_OPEN  '['
+#define TOKEN_BLOCK_CLOSE ']'
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,33 +36,36 @@ static const char *main_header[] = {
     "global _main",
     "",
     "_write:",
-    "   mov dil, byte [r14 + r12]", // Load value
-    "   call _putchar",             // Write value
-    "   ret",
+    "    mov dil, byte [r14 + r12]", // Load value
+    "    call _putchar",             // Write value
+    "    ret",
     "",
     "_read:",
-    "   call _getchar",            // Read value
-    "   mov byte [r14 + r12], al", // Store value
+    "    call _getchar",            // Read value
+    "    mov byte [r14 + r12], al", // Store value
     "",
     "_main:",
-    "   mov r12, 0",     // Buffer offset
-    "   mov r13, 32768", // Buffer capacity
+    "    mov r12, 0",     // Buffer offset
+    "    mov r13, 32768", // Buffer capacity
     "",
-    "   mov rdi, r13", // Allocate buffer
-    "   call _malloc",
-    "   mov r14, rax",
+    "    mov rdi, r13", // Allocate buffer
+    "    call _malloc",
+    "    mov r14, rax",
+    "",
+    "    jmp _block0", // Call the first block
 };
 static const char *main_footer[] = {
-    "   mov rdi, r14", // Free the buffer
-    "   call _free",
-    "   ret",
+    "    mov rdi, r14", // Free the buffer
+    "    call _free",
+    "    ret",
 };
-static const char *asm_ptr_inc = "   inc r12";
-static const char *asm_ptr_dec = "   dec r12";
-static const char *asm_val_inc = "   inc byte [r14 + r12]";
-static const char *asm_val_dec = "   dec byte [r14 + r12]";
-static const char *asm_write = "   call _write";
-static const char *asm_read = "   call _read";
+static const char *asm_ptr_inc = "    inc r12";
+static const char *asm_ptr_dec = "    dec r12";
+static const char *asm_val_inc = "    inc byte [r14 + r12]";
+static const char *asm_val_dec = "    dec byte [r14 + r12]";
+static const char *asm_write = "    call _write";
+static const char *asm_read = "    call _read";
+static const char *asm_cmp = "    cmp byte [r14 + r12], 0";
 
 /**
  * @brief Translate to assembly.
