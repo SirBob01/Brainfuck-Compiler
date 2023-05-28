@@ -17,21 +17,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "./array.h"
 #include "./string.h"
 
 /**
- * @brief Register usage
+ * @brief Code snippets to assemble.
+ *
  * Note: r12 - r15 are callee-saved registers (persistent)
  * http://6.s081.scripts.mit.edu/sp18/x86-64-architecture-guide.html
  *
- * r12   - Buffer offset
- * r13   - Buffer capacity
- * r14   - Buffer pointer
+ * r12 - Buffer offset
+ * r13 - Buffer capacity
+ * r14 - Buffer pointer
  */
-static const char *asm_head[] = {
+static const char *main_header[] = {
     "extern _malloc, _free, _putchar, _getchar",
     "section .text",
     "global _main",
+    "",
+    "_write:",
+    "   mov dil, byte [r14 + r12]", // Load value
+    "   call _putchar",             // Write value
+    "   ret",
+    "",
+    "_read:",
+    "   call _getchar",            // Read value
+    "   mov byte [r14 + r12], al", // Store value
     "",
     "_main:",
     "   mov r12, 0",     // Buffer offset
@@ -39,33 +50,27 @@ static const char *asm_head[] = {
     "",
     "   mov rdi, r13", // Allocate buffer
     "   call _malloc",
-    "   mov r14, rax", // Store buffer pointer in r10
+    "   mov r14, rax",
 };
-static const char *asm_ptr_inc[] = {
-    "   inc r12", // Increment buffer offset
-};
-static const char *asm_ptr_dec[] = {
-    "   dec r12", // Increment buffer offset
-};
-static const char *asm_val_inc[] = {
-    "   inc byte [r14 + r12]", // Increment value
-};
-static const char *asm_val_dec[] = {
-    "   dec byte [r14 + r12]", // Decrement value
-};
-static const char *asm_write[] = {
-    "   mov dil, byte [r14 + r12]", // Load value
-    "   call _putchar",             // Print value
-};
-static const char *asm_read[] = {
-    "   call _getchar",            // Read value
-    "   mov byte [r14 + r12], al", // Store value
-};
-static const char *asm_foot[] = {
+static const char *main_footer[] = {
     "   mov rdi, r14", // Free the buffer
     "   call _free",
-    "   ret", // Return 0
+    "   ret",
 };
+static const char *asm_ptr_inc = "   inc r12";
+static const char *asm_ptr_dec = "   dec r12";
+static const char *asm_val_inc = "   inc byte [r14 + r12]";
+static const char *asm_val_dec = "   dec byte [r14 + r12]";
+static const char *asm_write = "   call _write";
+static const char *asm_read = "   call _read";
+
+/**
+ * @brief Translate to assembly.
+ *
+ * @param source
+ * @return string_t
+ */
+string_t parse(char *source);
 
 /**
  * @brief Validate the source code to ensure that all brackets are balanced.
@@ -75,22 +80,5 @@ static const char *asm_foot[] = {
  * @return false
  */
 bool validate(char *source);
-
-/**
- * @brief Write a block of assembly code.
- *
- * @param assembly
- * @param lines
- * @param n
- */
-void write_block(string_t *assembly, const char **lines, unsigned n);
-
-/**
- * @brief Translate to assembly.
- *
- * @param source
- * @return string_t
- */
-string_t parse(char *source);
 
 #endif

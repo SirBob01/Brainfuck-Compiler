@@ -1,11 +1,38 @@
 #include "./parse.h"
+#include "array.h"
 
-void write_block(string_t *assembly, const char **lines, unsigned n) {
+void append_code(string_t *dst, const char *lines[], unsigned n) {
     for (unsigned i = 0; i < n; i++) {
-        string_concat(assembly, lines[i]);
-        string_push(assembly, '\n');
+        string_concat(dst, lines[i]);
+        string_push(dst, '\n');
     }
-    string_push(assembly, '\n');
+    string_push(dst, '\n');
+}
+
+string_t parse(char *source) {
+    string_t assembly = string_create();
+    append_code(&assembly,
+                main_header,
+                sizeof(main_header) / sizeof(main_header[0]));
+
+    // Process tokens and create blocks
+    array_t blocks = array_create(sizeof(string_t));
+
+    // Write the footer of main subroutine
+    append_code(&assembly,
+                main_footer,
+                sizeof(main_footer) / sizeof(main_footer[0]));
+
+    // Append blocks to end-of-file and cleanup
+    for (unsigned i = 1; i < blocks.size; i++) {
+        string_t block;
+        array_get(&blocks, i, &block);
+        string_concat(&assembly, block.buffer);
+        string_destroy(&block);
+    }
+    array_destroy(&blocks);
+
+    return assembly;
 }
 
 bool validate(char *source) {
@@ -24,56 +51,4 @@ bool validate(char *source) {
         }
     }
     return balance == 0;
-}
-
-string_t parse(char *source) {
-    string_t assembly = string_create();
-    write_block(&assembly, asm_head, sizeof(asm_head) / sizeof(asm_head[0]));
-
-    unsigned n = strlen(source);
-    for (unsigned i = 0; i < n; i++) {
-        switch (source[i]) {
-        case TOKEN_PTR_INC:
-            write_block(&assembly,
-                        asm_ptr_inc,
-                        sizeof(asm_ptr_inc) / sizeof(asm_ptr_inc[0]));
-            break;
-        case TOKEN_PTR_DEC:
-            write_block(&assembly,
-                        asm_ptr_dec,
-                        sizeof(asm_ptr_dec) / sizeof(asm_ptr_dec[0]));
-            break;
-        case TOKEN_VAL_INC:
-            write_block(&assembly,
-                        asm_val_inc,
-                        sizeof(asm_val_inc) / sizeof(asm_val_inc[0]));
-            break;
-        case TOKEN_VAL_DEC:
-            write_block(&assembly,
-                        asm_val_dec,
-                        sizeof(asm_val_dec) / sizeof(asm_val_dec[0]));
-            break;
-        case TOKEN_WRITE:
-            write_block(&assembly,
-                        asm_write,
-                        sizeof(asm_write) / sizeof(asm_write[0]));
-            break;
-        case TOKEN_READ:
-            write_block(&assembly,
-                        asm_read,
-                        sizeof(asm_read) / sizeof(asm_read[0]));
-            break;
-        case TOKEN_JMP_INC:
-            // Create a new subroutine
-            break;
-        case TOKEN_JMP_DEC:
-            // Jump to the beginning of the subroutine if looped
-            break;
-        default:
-            break;
-        }
-    }
-
-    write_block(&assembly, asm_foot, sizeof(asm_foot) / sizeof(asm_foot[0]));
-    return assembly;
 }
