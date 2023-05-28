@@ -39,13 +39,3 @@ void string_concat(string_t *string, const char *str) {
     strncat(string->buffer, str, append_length);
     string->length += append_length;
 }
-
-void string_set(string_t *string, unsigned index, char c) {
-    assert(index < string->length);
-    string->buffer[index] = c;
-}
-
-char string_get(string_t *string, unsigned index) {
-    assert(index < string->length);
-    return string->buffer[index];
-}

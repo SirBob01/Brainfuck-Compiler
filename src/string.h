@@ -46,22 +46,4 @@ void string_push(string_t *string, char c);
  */
 void string_concat(string_t *string, const char *str);
 
-/**
- * @brief Set a character in the string.
- *
- * @param string
- * @param index
- * @param c
- */
-void string_set(string_t *string, unsigned index, char c);
-
-/**
- * @brief Get a character from the string.
- *
- * @param string
- * @param index
- * @return char
- */
-char string_get(string_t *string, unsigned index);
-
 #endif
