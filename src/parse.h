@@ -59,13 +59,6 @@ static const char *main_footer[] = {
     "    call _free",
     "    ret",
 };
-static const char *asm_ptr_inc = "    inc r12";
-static const char *asm_ptr_dec = "    dec r12";
-static const char *asm_val_inc = "    inc byte [r14 + r12]";
-static const char *asm_val_dec = "    dec byte [r14 + r12]";
-static const char *asm_write = "    call _write";
-static const char *asm_read = "    call _read";
-static const char *asm_cmp = "    cmp byte [r14 + r12], 0";
 
 /**
  * @brief Translate to assembly.

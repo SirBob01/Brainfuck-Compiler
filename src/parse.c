@@ -1,4 +1,5 @@
 #include "./parse.h"
+#include <stdio.h>
 
 void append_code(string_t *dst, const char *lines[], unsigned n) {
     for (unsigned i = 0; i < n; i++) {
@@ -27,9 +28,8 @@ void block_open(array_t *blocks, array_t *stack, unsigned block_id) {
     unsigned next_block = blocks->size - 1;
 
     // If current value is zero, jump to next block
-    // cmp byte ptr [rbx], 0
-    string_concat(block, asm_cmp);
-    string_push(block, '\n');
+    // cmp byte ptr [r14 + r12], 0
+    string_concat(block, "    cmp byte [r14 + r12], 0\n");
 
     // je _skip_block<N>
     string_concat(block, "    je _skip");
@@ -54,8 +54,7 @@ void block_close(array_t *blocks, array_t *stack, unsigned block_id) {
     string_t *block = array_get(blocks, block_id);
 
     // If current value is non-zero, jump to start of block
-    string_concat(block, asm_cmp);
-    string_push(block, '\n');
+    string_concat(block, "    cmp byte [r14 + r12], 0\n");
     string_concat(block, "    jne ");
     write_block_name(block, block_id);
     string_push(block, '\n');
@@ -67,12 +66,66 @@ void block_close(array_t *blocks, array_t *stack, unsigned block_id) {
     array_pop(stack);
 }
 
-void block_append(array_t *blocks, unsigned block_id, const char *line) {
+void generate_ptr_inc_asm(array_t *blocks, unsigned block_id, unsigned count) {
     string_t *block = array_get(blocks, block_id);
 
-    // Append code snippet
-    string_concat(block, line);
+    // Generate count string
+    char count_str[sizeof(unsigned) * 8 + 1];
+    snprintf(count_str, sizeof(count_str), "%d", count);
+
+    // Write assembly
+    string_concat(block, "    add r12, ");
+    string_concat(block, count_str);
     string_concat(block, "\n\n");
+}
+
+void generate_ptr_dec_asm(array_t *blocks, unsigned block_id, unsigned count) {
+    string_t *block = array_get(blocks, block_id);
+
+    // Generate count string
+    char count_str[sizeof(unsigned) * 8 + 1];
+    snprintf(count_str, sizeof(count_str), "%d", count);
+
+    // Write assembly
+    string_concat(block, "    sub r12, ");
+    string_concat(block, count_str);
+    string_concat(block, "\n\n");
+}
+
+void generate_val_inc_asm(array_t *blocks, unsigned block_id, unsigned count) {
+    string_t *block = array_get(blocks, block_id);
+
+    // Generate count string
+    char count_str[sizeof(unsigned) * 8 + 1];
+    snprintf(count_str, sizeof(count_str), "%d", count);
+
+    // Write assembly
+    string_concat(block, "    add byte [r14 + r12], ");
+    string_concat(block, count_str);
+    string_concat(block, "\n\n");
+}
+
+void generate_val_dec_asm(array_t *blocks, unsigned block_id, unsigned count) {
+    string_t *block = array_get(blocks, block_id);
+
+    // Generate count string
+    char count_str[sizeof(unsigned) * 8 + 1];
+    snprintf(count_str, sizeof(count_str), "%d", count);
+
+    // Write assembly
+    string_concat(block, "    sub byte [r14 + r12], ");
+    string_concat(block, count_str);
+    string_concat(block, "\n\n");
+}
+
+void generate_write_asm(array_t *blocks, unsigned block_id) {
+    string_t *block = array_get(blocks, block_id);
+    string_concat(block, "    call _write\n\n");
+}
+
+void generate_read_asm(array_t *blocks, unsigned block_id) {
+    string_t *block = array_get(blocks, block_id);
+    string_concat(block, "    call _read\n\n");
 }
 
 array_t generate_blocks(char *source) {
@@ -84,26 +137,50 @@ array_t generate_blocks(char *source) {
     array_push(&stack, &curr_block);
 
     unsigned n = strlen(source);
+    char prev_c = 0;
+    unsigned run_length = 1;
     for (unsigned i = 0; i < n; i++) {
-        // printf("%d\n", curr_block);
-        switch (source[i]) {
-        case TOKEN_PTR_INC:
-            block_append(&blocks, curr_block, asm_ptr_inc);
-            break;
-        case TOKEN_PTR_DEC:
-            block_append(&blocks, curr_block, asm_ptr_dec);
-            break;
-        case TOKEN_VAL_INC:
-            block_append(&blocks, curr_block, asm_val_inc);
-            break;
-        case TOKEN_VAL_DEC:
-            block_append(&blocks, curr_block, asm_val_dec);
-            break;
+        char c = source[i];
+
+        // Skip non-tokens
+        if (c != TOKEN_PTR_DEC && c != TOKEN_PTR_INC && c != TOKEN_VAL_DEC &&
+            c != TOKEN_VAL_INC && c != TOKEN_WRITE && c != TOKEN_READ &&
+            c != TOKEN_BLOCK_OPEN && c != TOKEN_BLOCK_CLOSE) {
+            continue;
+        }
+
+        // Handle runs of the same token (inc/dec operator)
+        if (prev_c == c) {
+            run_length++;
+        } else {
+            if (run_length > 0) {
+                switch (prev_c) {
+                case TOKEN_PTR_INC:
+                    generate_ptr_inc_asm(&blocks, curr_block, run_length);
+                    break;
+                case TOKEN_PTR_DEC:
+                    generate_ptr_dec_asm(&blocks, curr_block, run_length);
+                    break;
+                case TOKEN_VAL_INC:
+                    generate_val_inc_asm(&blocks, curr_block, run_length);
+                    break;
+                case TOKEN_VAL_DEC:
+                    generate_val_dec_asm(&blocks, curr_block, run_length);
+                    break;
+                default:
+                    break;
+                }
+            }
+            run_length = 1;
+        }
+
+        // Handle other tokens
+        switch (c) {
         case TOKEN_WRITE:
-            block_append(&blocks, curr_block, asm_write);
+            generate_write_asm(&blocks, curr_block);
             break;
         case TOKEN_READ:
-            block_append(&blocks, curr_block, asm_read);
+            generate_read_asm(&blocks, curr_block);
             break;
         case TOKEN_BLOCK_OPEN:
             block_open(&blocks, &stack, curr_block);
@@ -116,10 +193,32 @@ array_t generate_blocks(char *source) {
         default:
             break;
         }
+        prev_c = c;
+    }
+
+    // Handle final run
+    if (run_length > 0) {
+        switch (prev_c) {
+        case TOKEN_PTR_INC:
+            generate_ptr_inc_asm(&blocks, curr_block, run_length);
+            break;
+        case TOKEN_PTR_DEC:
+            generate_ptr_dec_asm(&blocks, curr_block, run_length);
+            break;
+        case TOKEN_VAL_INC:
+            generate_val_inc_asm(&blocks, curr_block, run_length);
+            break;
+        case TOKEN_VAL_DEC:
+            generate_val_dec_asm(&blocks, curr_block, run_length);
+            break;
+        default:
+            break;
+        }
     }
 
     // Close root block and destroy stack
-    block_append(&blocks, 0, "    ret");
+    string_t *block = array_get(&blocks, 0);
+    string_concat(block, "    ret\n");
     array_destroy(&stack);
     return blocks;
 }
